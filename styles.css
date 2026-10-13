@@ -361,21 +361,37 @@ h1{
 #caring-index{
     position: fixed;
     top: 35px;
-    right: 10px;
+    left: 10px;
     background-color: white;
-    width: 20%;
-    height: calc(100dvh - 76px);
-    z-index: 199;
+    width: calc(100dvw - 20px);
+    height: calc(100dvh - 35px);
+    z-index: 2000;
     border-left: solid 1px black;
+    border-right: solid 1px black;
     display: flex;
     flex-direction: column;
+    overflow-y: scroll;
+    color: black;
 }
 #index-list{
-    margin: 10px;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-template-columns: repeat(4, 1fr);
+    margin: 0px 10px;
+    display: flex;
+    gap: 10px;
+    font-size: 10px;
 }
+.index-column{
+    overflow-y: scroll;
+    width: 11.11%;
+}
+.fig{
+    margin-bottom: 10px;
+    /* text-align: center; */
+    font-style: italic;
+}
+.fig img{
+    max-width: 100%;
+}
+
 #fig-display{
     margin: 10px;
     width: calc(100% - 10px);
@@ -402,7 +418,7 @@ h1{
     display: none;
 }
 #caring-index.show{
-    display: flex;
+    display: block;
 }
 
 
@@ -543,4 +559,38 @@ h1{
     display: none;
     width: 100%;
     height: 100%;
+}
+
+#tables{
+    margin-top: 40px;
+}
+#tables p, #caring-index p{
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+}
+.table{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    padding: 20px;
+}
+.table div{
+    border-top: solid 1px black;
+}
+.top-row{
+    padding: 10px 0px;
+}
+#table1{
+    margin-bottom: 20px; 
+}
+#table1 p{
+    text-align: left;
+    text-transform: none;
+    margin-bottom: 0px;
+}
+#table1 div{
+    border-bottom: solid 1px black;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }

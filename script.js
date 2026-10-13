@@ -161,6 +161,7 @@ src.addEventListener('scroll', () => {
 
 // the wheel drives the scene both ways
 window.addEventListener('wheel', e => {
+  if (e.target.closest('#caring-index')) return;
   e.preventDefault();                       // stop the browser's own scrolling
 
   // normal state: forward the wheel to the text column
@@ -184,16 +185,6 @@ document.getElementById("fig-button").addEventListener("click", ()=>{
 document.addEventListener("click", (e) => {
     if (!document.getElementById("fig-button").contains(e.target) && !document.getElementById("caring-index").contains(e.target)) {
         document.getElementById("caring-index").classList.remove("show");
-    }
-});
-
-document.getElementById("fig1-title").addEventListener("click", ()=>{
-    document.getElementById("fig-display").classList.add("show");
-});
-
-document.addEventListener("click", (e) => {
-    if (!document.getElementById("fig1-title").contains(e.target) && !document.getElementById("fig-display").contains(e.target)) {
-        document.getElementById("fig-display").classList.remove("show");
     }
 });
 
