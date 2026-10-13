@@ -1,0 +1,197 @@
+// const lottieBox = document.getElementById('lottie-box');
+// const lotties = new Map();   // trigger → { anim, holder }
+
+// triggers.filter(t => t.dataset.type === 'lottie').forEach(t => {
+//   const holder = document.createElement('div');
+//   holder.className = 'lottie-holder';
+//   lottieBox.appendChild(holder);
+//   const anim = lottie.loadAnimation({
+//     container: holder, renderer: 'svg',
+//     loop: false, autoplay: false, path: t.dataset.src
+//   });
+//   lotties.set(t, { anim, holder });
+// });
+
+// const src = document.getElementById('no-exit');
+// const center = document.getElementById('center');
+// const img = document.getElementById('rust1');
+// const triggers = [...document.querySelectorAll('.trigger')];
+
+// let active = null, progress = 0;
+
+
+const src = document.getElementById('no-exit');
+const center = document.getElementById('center');
+const img = document.getElementById('rust1');
+const triggers = [...document.querySelectorAll('.trigger')];
+
+let active = null, progress = 0;
+
+const lottieBox = document.getElementById('lottie-box');
+const lotties = new Map();   // trigger → { anim, holder }
+
+if (typeof lottie !== 'undefined') {
+  triggers.filter(t => t.dataset.type === 'lottie').forEach(t => {
+    const holder = document.createElement('div');
+    holder.className = 'lottie-holder';
+    lottieBox.appendChild(holder);
+    const anim = lottie.loadAnimation({
+      container: holder, renderer: 'svg',
+      loop: false, autoplay: false, path: t.dataset.src
+    });
+    anim.addEventListener('data_failed', () => console.error('Lottie failed to load:', t.dataset.src));
+    lotties.set(t, { anim, holder });
+  });
+} else {
+  console.error('lottie library not loaded');
+}
+
+
+
+// true = the marker is still below the trigger line (not reached yet)
+const wasBelow = new Map(triggers.map(t => [t, true]));
+
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const ease = x => x * x * (3 - 2 * x);
+
+function lineY() {
+  return src.getBoundingClientRect().top + src.clientHeight * 0.3;
+}
+
+function start(t, from) {
+  active = t;
+  progress = from;
+  src.scrollTop += t.getBoundingClientRect().top - lineY();
+  src.style.overflow = 'hidden';
+  center.classList.add('active');
+
+  if (t.dataset.type === 'lottie') {
+    lotties.get(t).holder.style.display = 'block';
+  } else {
+    img.src = t.dataset.src;
+  }
+  render();
+}
+
+const seg = (a, b) => clamp((progress - a) / (b - a));   // 0→1 between a and b
+
+function render() {
+  if (active.dataset.type === 'lottie') {
+    img.style.opacity = 0;
+    renderLottie();
+    return;
+  }
+  const push    = ease(seg(0, 0.12));      // column pushes the others aside
+  const grow    = ease(seg(0.12, 0.32));   // image fades in + grows to column height
+  const unmask  = ease(seg(0.32, 0.55));   // window widens to full width
+  const fadeOut = ease(seg(0.55, 0.75));      // final fade
+
+  // center column: grows first, then shrinks back as the unmasking starts
+  const colScale = push * (1 - unmask);
+  center.style.flex = `0 0 ${colScale * 20}%`;
+  center.style.marginLeft = `${-(1 - colScale) * 20}px`;
+
+  // geometry
+  const box  = src.getBoundingClientRect();       // column top + height
+  const W    = innerWidth - 20;                   // full width minus 10px margins
+  const colW = W * 0.2;                           // normal column width
+  const winW = colW + (W - colW) * unmask;        // current visible window width
+  const inset = (W - winW) / 2;                   // masked amount on each side
+
+  // the image box never changes size; the clip-path is the "container"
+  img.style.left   = '10px';
+  img.style.top    = box.top + 'px';
+  img.style.width  = W + 'px';
+  img.style.height = box.height + 'px';
+  img.style.clipPath  = `inset(0 ${inset}px 0 ${inset}px)`;
+//   img.style.transform = `scale(${0.3 + 0.7 * grow})`;   // grows to full column height
+  img.style.opacity   = grow * (1 - fadeOut);
+
+  document.body.classList.toggle('inverted', progress >= 0.27 && progress < 0.55);
+}
+
+function renderLottie() {
+  const { anim } = lotties.get(active);
+
+  // column grows at the start, shrinks at the end
+  const col = ease(seg(0, 0.1)) * (1 - ease(seg(0.9, 1)));
+  center.style.flex = `0 0 ${col * 20}%`;
+  center.style.marginLeft = `${-(1 - col) * 20}px`;
+
+  // forward during 0.1 to 0.5, backward during 0.5 to 0.9
+  const t = seg(0.1, 0.9);
+  const p = t < 0.5 ? t * 2 : (1 - t) * 2;          // 0 → 1 → 0
+  const lastFrame = Number(active.dataset.end) || (anim.totalFrames - 1);
+  anim.goToAndStop(p * lastFrame, true);
+
+  // fade in at the start, out at the end
+  lottieBox.style.opacity = ease(seg(0.1, 0.2)) * (1 - ease(seg(0.8, 0.9)));
+}
+
+function end(forward) {
+  if (active.dataset.type === 'lottie') {
+    lotties.get(active).holder.style.display = 'none';
+    lottieBox.style.opacity = 0;
+  }
+  center.classList.remove('active');
+  center.style.flex = '';
+  center.style.marginLeft = '';
+  img.style.opacity = 0;
+  src.style.overflow = '';                 // unlock scrolling
+  wasBelow.set(active, !forward);
+  active = null;
+  document.body.classList.remove('inverted');
+}
+
+// detect crossing the marker in either direction
+src.addEventListener('scroll', () => {
+  if (active) return;
+  const line = lineY();
+  triggers.forEach(t => {
+    const below = t.getBoundingClientRect().top > line;
+    if (below === wasBelow.get(t)) return;
+    wasBelow.set(t, below);
+    start(t, below ? 1 : 0);               // scrolling up: play in reverse
+  });
+});
+
+// the wheel drives the scene both ways
+window.addEventListener('wheel', e => {
+  e.preventDefault();                       // stop the browser's own scrolling
+
+  // normal state: forward the wheel to the text column
+  if (!active) {
+    const unit = e.deltaMode === 1 ? 16 : 1;   // Firefox mouse wheels report lines, not pixels
+    src.scrollTop += e.deltaY * unit;          // this fires the 'scroll' event, so triggers still work
+    return;
+  }
+
+  // scene state: the wheel drives the scene
+  progress = clamp(progress + e.deltaY / 2600);
+  render();
+  if (progress >= 1) end(true);
+  else if (progress <= 0) end(false);
+}, { passive: false });
+
+document.getElementById("fig-button").addEventListener("click", ()=>{
+    document.getElementById("caring-index").classList.toggle("show");
+});
+
+document.addEventListener("click", (e) => {
+    if (!document.getElementById("fig-button").contains(e.target) && !document.getElementById("caring-index").contains(e.target)) {
+        document.getElementById("caring-index").classList.remove("show");
+    }
+});
+
+document.getElementById("fig1-title").addEventListener("click", ()=>{
+    document.getElementById("fig-display").classList.add("show");
+});
+
+document.addEventListener("click", (e) => {
+    if (!document.getElementById("fig1-title").contains(e.target) && !document.getElementById("fig-display").contains(e.target)) {
+        document.getElementById("fig-display").classList.remove("show");
+    }
+});
+
+
+
