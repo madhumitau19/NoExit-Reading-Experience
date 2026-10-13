@@ -65,6 +65,32 @@ const easeInOutPow = (x, p = 12) =>
 
 const maxProgress = t => t.dataset.type === 'lottie' ? 0.9 : 1;
 
+const LOTTIE_DONE = 0.6;   // progress where the animation has finished playing
+const EXIT_MS = 700;       // fade + collapse duration once triggered
+
+let autoRaf = null;
+let autoing = false;
+
+function autoTo(target, ms, done) {
+  cancelAnimationFrame(autoRaf);
+  const from = progress;
+  const t0 = performance.now();
+  autoing = true;
+
+  function step(now) {
+    const k = clamp((now - t0) / ms);
+    progress = from + (target - from) * ease(k);
+    render();
+    if (k < 1) {
+      autoRaf = requestAnimationFrame(step);
+    } else {
+      autoing = false;
+      if (done) done();
+    }
+  }
+  autoRaf = requestAnimationFrame(step);
+}
+
 function lineY() {
   return src.getBoundingClientRect().top + src.clientHeight * 0.3;
 }
@@ -142,6 +168,9 @@ function renderLottie() {
 }
 
 function end(forward) {
+  function end(forward) {
+  cancelAnimationFrame(autoRaf);
+  autoing = false;
   if (active.dataset.type === 'lottie') {
     lotties.get(active).holder.style.display = 'none';
     lottieBox.style.opacity = 0;
@@ -164,7 +193,8 @@ src.addEventListener('scroll', () => {
     const below = t.getBoundingClientRect().top > line;
     if (below === wasBelow.get(t)) return;
     wasBelow.set(t, below);
-    start(t, below ? maxProgress(t) : 0);   // scrolling up: play in reverse              // scrolling up: play in reverse
+    start(t, below ? maxProgress(t) : 0);
+    if (below && t.dataset.type === 'lottie') autoTo(LOTTIE_DONE, EXIT_MS);
   });
 });
 
@@ -180,13 +210,28 @@ window.addEventListener('wheel', e => {
     return;
   }
 
-  if (performance.now() < holdUntil) return;   // lingering on the image
+  if (autoing) return;                          // exit/entry animation running
+  if (performance.now() < holdUntil) return;    // lingering / swallowing inertia
+
+  const isLottie = active.dataset.type === 'lottie';
+
+  // lottie finished + scroll down: run the exit on its own
+  if (isLottie && e.deltaY > 0 && progress >= LOTTIE_DONE) {
+    autoTo(maxProgress(active), EXIT_MS, () => end(true));
+    return;
+  }
 
   const prev = progress;
   progress = clamp(progress + e.deltaY / 2600, 0, maxProgress(active));
 
-  // snap to the hold point when crossing it (images only)
-  if (active.dataset.type !== 'lottie' &&
+  // lottie just finished playing: stop there and briefly ignore trackpad inertia
+  if (isLottie && prev < LOTTIE_DONE && progress >= LOTTIE_DONE) {
+    progress = LOTTIE_DONE;
+    holdUntil = performance.now() + 400;
+  }
+
+  // image hold (unchanged)
+  if (!isLottie &&
       ((prev < HOLD_AT && progress >= HOLD_AT) || (prev > HOLD_AT && progress <= HOLD_AT))) {
     progress = HOLD_AT;
     holdUntil = performance.now() + HOLD_MS;
