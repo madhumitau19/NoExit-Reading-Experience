@@ -112,20 +112,19 @@ function render() {
 
 function renderLottie() {
   const { anim } = lotties.get(active);
+  const lastFrame = Number(active.dataset.end) || (anim.totalFrames - 1);
 
   // column grows at the start, shrinks at the end
-  const col = ease(seg(0, 0.1)) * (1 - ease(seg(0.9, 1)));
+  const col = ease(seg(0, 0.1)) * (1 - ease(seg(0.8, 1)));
   center.style.flex = `0 0 ${col * 20}%`;
   center.style.marginLeft = `${-(1 - col) * 20}px`;
 
-  // forward during 0.1 to 0.5, backward during 0.5 to 0.9
-  const t = seg(0.1, 0.9);
-  const p = t < 0.5 ? t * 2 : (1 - t) * 2;          // 0 → 1 → 0
-  const lastFrame = Number(active.dataset.end) || (anim.totalFrames - 1);
-  anim.goToAndStop(p * lastFrame, true);
+  // plays forward once, then holds on the last frame
+  const play = seg(0.1, 0.6);
+  anim.goToAndStop(play * lastFrame, true);
 
-  // fade in at the start, out at the end
-  lottieBox.style.opacity = ease(seg(0.1, 0.2)) * (1 - ease(seg(0.8, 0.9)));
+  // fade in at the start, fade out at the end
+  lottieBox.style.opacity = ease(seg(0.05, 0.15)) * (1 - ease(seg(0.8, 1)));
 }
 
 function end(forward) {
