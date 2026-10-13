@@ -70,6 +70,12 @@ function start(t, from) {
   } else {
     img.src = t.dataset.src;
   }
+
+  if (t.dataset.type === 'lottie') {
+    const entry = lotties.get(t);
+    if (!entry) { active = null; src.style.overflow = ''; center.classList.remove('active'); return; }
+    entry.holder.style.display = 'block';
+  }
   render();
 }
 
