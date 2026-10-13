@@ -114,17 +114,16 @@ function renderLottie() {
   const { anim } = lotties.get(active);
   const lastFrame = Number(active.dataset.end) || (anim.totalFrames - 1);
 
-  // column grows at the start, shrinks at the end
+  // column grows at the start, then collapses AFTER the quote has faded
   const col = ease(seg(0, 0.1)) * (1 - ease(seg(0.8, 1)));
   center.style.flex = `0 0 ${col * 20}%`;
   center.style.marginLeft = `${-(1 - col) * 20}px`;
 
   // plays forward once, then holds on the last frame
-  const play = seg(0.1, 0.6);
-  anim.goToAndStop(play * lastFrame, true);
+  anim.goToAndStop(seg(0.1, 0.55) * lastFrame, true);
 
-  // fade in at the start, fade out at the end
-  lottieBox.style.opacity = ease(seg(0.05, 0.15)) * (1 - ease(seg(0.8, 1)));
+  // fade in early, fade out before the column starts to close
+  lottieBox.style.opacity = ease(seg(0.05, 0.15)) * (1 - ease(seg(0.6, 0.8)));
 }
 
 function end(forward) {
