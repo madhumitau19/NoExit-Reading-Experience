@@ -27,6 +27,10 @@ const triggers = [...document.querySelectorAll('.trigger')];
 
 let active = null, progress = 0;
 
+const HOLD_AT = 0.55;   // image fully revealed
+const HOLD_MS = 2000;   // how long to linger
+let holdUntil = 0;
+
 const lottieBox = document.getElementById('lottie-box');
 const lotties = new Map();   // trigger → { anim, holder }
 
@@ -53,6 +57,13 @@ const wasBelow = new Map(triggers.map(t => [t, true]));
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const ease = x => x * x * (3 - 2 * x);
+// p controls how slow the ends are: 3 = gentle, 5 = strong, 7 = very slow ends
+const easeInOutPow = (x, p = 12) =>
+  x < 0.5
+    ? Math.pow(2, p - 1) * Math.pow(x, p)
+    : 1 - Math.pow(-2 * x + 2, p) / 2;
+
+const maxProgress = t => t.dataset.type === 'lottie' ? 0.9 : 1;
 
 function lineY() {
   return src.getBoundingClientRect().top + src.clientHeight * 0.3;
@@ -113,23 +124,21 @@ function render() {
 //   img.style.transform = `scale(${0.3 + 0.7 * grow})`;   // grows to full column height
   img.style.opacity   = grow * (1 - fadeOut);
 
-  document.body.classList.toggle('inverted', progress >= 0.27 && progress < 0.55);
+  document.body.classList.toggle('inverted', progress >= 0.27 && progress <= 0.55);
 }
 
 function renderLottie() {
   const { anim } = lotties.get(active);
   const lastFrame = Number(active.dataset.end) || (anim.totalFrames - 1);
 
-  // column grows at the start, then collapses AFTER the quote has faded
-  const col = ease(seg(0, 0.1)) * (1 - ease(seg(0.8, 1)));
+  // column grows at the start, collapses while the quote is fading
+  const col = ease(seg(0, 0.1)) * (1 - ease(seg(0.7, 0.9)));
   center.style.flex = `0 0 ${col * 20}%`;
   center.style.marginLeft = `${-(1 - col) * 20}px`;
 
-  // plays forward once, then holds on the last frame
-  anim.goToAndStop(seg(0.1, 0.55) * lastFrame, true);
-
-  // fade in early, fade out before the column starts to close
-  lottieBox.style.opacity = ease(seg(0.05, 0.15)) * (1 - ease(seg(0.6, 0.8)));
+  // animation plays 0.1 → 0.6, fade-out starts the instant it finishes
+  anim.goToAndStop(seg(0.1, 0.6) * lastFrame, true);
+  lottieBox.style.opacity = ease(seg(0.05, 0.15)) * (1 - ease(seg(0.6, 0.75)));
 }
 
 function end(forward) {
@@ -149,32 +158,42 @@ function end(forward) {
 
 // detect crossing the marker in either direction
 src.addEventListener('scroll', () => {
-  if (active) return;
+  if (active || jumping) return;
   const line = lineY();
   triggers.forEach(t => {
     const below = t.getBoundingClientRect().top > line;
     if (below === wasBelow.get(t)) return;
     wasBelow.set(t, below);
-    start(t, below ? 1 : 0);               // scrolling up: play in reverse
+    start(t, below ? maxProgress(t) : 0);   // scrolling up: play in reverse              // scrolling up: play in reverse
   });
 });
 
 // the wheel drives the scene both ways
 window.addEventListener('wheel', e => {
   if (e.target.closest('#caring-index')) return;
-  e.preventDefault();                       // stop the browser's own scrolling
+  e.preventDefault();
+  if (jumping) return;
 
-  // normal state: forward the wheel to the text column
   if (!active) {
-    const unit = e.deltaMode === 1 ? 16 : 1;   // Firefox mouse wheels report lines, not pixels
-    src.scrollTop += e.deltaY * unit;          // this fires the 'scroll' event, so triggers still work
+    const unit = e.deltaMode === 1 ? 16 : 1;
+    src.scrollTop += e.deltaY * unit;
     return;
   }
 
-  // scene state: the wheel drives the scene
-  progress = clamp(progress + e.deltaY / 2600);
+  if (performance.now() < holdUntil) return;   // lingering on the image
+
+  const prev = progress;
+  progress = clamp(progress + e.deltaY / 2600, 0, maxProgress(active));
+
+  // snap to the hold point when crossing it (images only)
+  if (active.dataset.type !== 'lottie' &&
+      ((prev < HOLD_AT && progress >= HOLD_AT) || (prev > HOLD_AT && progress <= HOLD_AT))) {
+    progress = HOLD_AT;
+    holdUntil = performance.now() + HOLD_MS;
+  }
+
   render();
-  if (progress >= 1) end(true);
+  if (progress >= maxProgress(active)) end(true);
   else if (progress <= 0) end(false);
 }, { passive: false });
 
@@ -189,4 +208,35 @@ document.addEventListener("click", (e) => {
 });
 
 
+let jumping = false;
+let jumpRaf = null;
+const JUMP_MS = 6000;   // total travel time, lower = faster
 
+function jumpTo(toEnd) {
+  if (active) end(toEnd);          // clean up any running scene first
+  holdUntil = 0;
+  cancelAnimationFrame(jumpRaf);
+
+  const from = src.scrollTop;
+  const to = toEnd ? src.scrollHeight - src.clientHeight : 0;
+  if (Math.abs(to - from) < 1) return;
+
+  jumping = true;
+  const t0 = performance.now();
+
+  function step(now) {
+    const k = clamp((now - t0) / JUMP_MS);
+    src.scrollTop = from + (to - from) * easeInOutPow(k, 5);
+    if (k < 1) {
+      jumpRaf = requestAnimationFrame(step);
+    } else {
+      // re-sync so no trigger thinks it was just crossed
+      triggers.forEach(t => wasBelow.set(t, t.getBoundingClientRect().top > lineY()));
+      jumping = false;
+    }
+  }
+  jumpRaf = requestAnimationFrame(step);
+}
+
+document.getElementById('no-exit-title').addEventListener('click', () => jumpTo(false));
+document.getElementById('caring-title').addEventListener('click', () => jumpTo(true));

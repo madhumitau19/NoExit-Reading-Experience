@@ -594,3 +594,12 @@ h1{
     flex-direction: column;
     justify-content: space-between;
 }
+
+#no-exit-title, #caring-title {
+    cursor: pointer;
+    z-index: 600;
+    transition: filter 0.3s ease-in-out;
+}
+#no-exit-title:hover, #caring-title:hover {
+    filter: blur(1px);
+}
