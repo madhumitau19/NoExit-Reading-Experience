@@ -630,3 +630,6 @@ div.trigger { display: none; }
     transition: opacity 0.7s ease-in-out;
 }
 #final-lottie.show { opacity: 1; }
+
+#no-exit-text, #caring-text { width: var(--text-w); }
+#no-exit { overflow-x: hidden; }   /* stops sideways scroll when it's narrower than its text */

@@ -56,6 +56,14 @@ function lineY() {
   return src.getBoundingClientRect().top + src.clientHeight * 0.3;
 }
 
+function lockTextWidth() {
+  if (active) return;   // only measure at rest
+  document.documentElement.style.setProperty('--text-w', src.clientWidth + 'px');
+}
+lockTextWidth();
+addEventListener('resize', lockTextWidth);
+
+
 // ---------- load lotties ----------
 const lotties = new Map();   // trigger → { anim, holder }
 
