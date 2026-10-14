@@ -451,7 +451,7 @@ h1{
     position: fixed;
     top: 0px;
     left: 0px;
-    transition: all 0.3s ease-in-out;
+    transition: opacity 0.7s ease-in-out;
 }
 #description{
     width: 350px;
@@ -510,7 +510,7 @@ h1{
     width: 100vw;
     height: 100vh;
     display: none;
-    transition: all 0.3s ease-in-out;
+    transition: opacity 0.5s ease-in-out;
     opacity: 0; 
     padding: 30px;
 }
@@ -523,6 +523,7 @@ h1{
 }
 #colophon-container.show{
     opacity: 1;
+    transition: opacity 0.5s ease-in-out 0.5s;
 }
 #description-container.hide{
     display: none;
@@ -617,3 +618,15 @@ h1{
 .no-exit-img:hover, .caring-img:hover{
     cursor: pointer;
 }
+
+.trigger { display: none; }
+
+#final-lottie {
+    position: fixed;
+    inset: 0;
+    z-index: 5;                 /* above the image columns, below the buttons (1000) */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1s ease-in-out;
+}
+#final-lottie.show { opacity: 1; }

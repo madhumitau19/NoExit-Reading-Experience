@@ -17,6 +17,30 @@ function updateTheme() {
   document.body.classList.toggle('dark', visible);
 }
 
+const finalBox = document.getElementById('final-lottie');
+const finalSrc = document.querySelector('.trigger').dataset.src;
+let finalShown = false;
+
+const finalAnim = (typeof lottie !== 'undefined')
+  ? lottie.loadAnimation({
+      container: finalBox, renderer: 'svg',
+      loop: false, autoplay: false, path: finalSrc
+    })
+  : null;
+
+function updateFinal(atEnd) {
+  if (!finalAnim || atEnd === finalShown) return;
+  finalShown = atEnd;
+  finalBox.classList.toggle('show', atEnd);
+
+  if (atEnd) {
+    finalAnim.goToAndPlay(0, true);          // play from the start
+  } else {
+    // rewind only after the fade-out finishes, so there's no visible jump
+    setTimeout(() => { if (!finalShown) finalAnim.stop(); }, 1000);
+  }
+}
+
 function apply() {
   const total = COLOPHON_OUT + imageMax();
   pos = Math.min(total, Math.max(0, pos));        // clamp
@@ -40,7 +64,7 @@ function apply() {
     // index 0, 2, 4 scroll down; 1, 3 scroll up
     col.scrollTop = i % 2 === 0 ? p : m - p;
   });
-
+  updateFinal(pos >= total - 2);   // -2 tolerates sub-pixel rounding
   updateTheme();
 }
 
