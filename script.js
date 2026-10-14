@@ -383,9 +383,9 @@ const RAMP_FLOOR = 0.4;
 const LOTTIE_DONE = 0.6;         // progress where the animation has finished playing
 const LOTTIE_GROW_MS = 900;      // column opens
 const LOTTIE_PLAY_MS = 4500;     // the animation itself (higher = slower)
-const LINGER_MS = 600;           // pause on the finished quote
-const LOTTIE_FADE_MS = 1100;     // quote fades out
-const LOTTIE_COLLAPSE_MS = 1400; // columns return to normal width
+const LINGER_MS = 200;           // was 600
+const LOTTIE_FADE_MS = 500;      // was 1100
+const LOTTIE_COLLAPSE_MS = 900;  // was 1400
 const LOTTIE_REVERSE_MS = 1200;  // entering a lottie from below
 
 // page jump (title clicks)
@@ -603,7 +603,9 @@ src.addEventListener('scroll', () => {
     start(t, below ? 1 : 0);
     // entering a lottie from below: play back to the finished frame
     if (active && below && t.dataset.type === 'lottie') {
-      autoTo(LOTTIE_DONE, LOTTIE_REVERSE_MS, null, easeInOutPow);
+      autoTo(0.75, LOTTIE_COLLAPSE_MS, () => {
+        autoTo(LOTTIE_DONE, LOTTIE_FADE_MS, null, linear);
+      }, linear);
     }
   });
 });
@@ -627,10 +629,11 @@ window.addEventListener('wheel', e => {
 
   // ----- lotties -----
   if (isLottie) {
+    if (Math.abs(e.deltaY) < 4) return;          // ignore trackpad jitter
     if (e.deltaY > 0) {
       playLottie();                              // one scroll = the whole sequence
     } else {
-      progress = clamp(progress + e.deltaY / 2000, 0, 1);   // scrolling up: manual reverse
+      progress = clamp(progress + e.deltaY / 2000, 0, 1);
       render();
       if (progress <= 0) end(false);
     }
