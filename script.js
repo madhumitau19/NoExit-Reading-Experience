@@ -32,6 +32,9 @@ const HOLD_MS = 2000;   // how long to linger
 let holdUntil = 0; 
 let sceneStart = 0;
 const ENTRY_RAMP_MS = 800;   // longer = gentler entry
+const ENTRY_SENS_IMG    = 3400;   // higher = slower entry (was 2600)
+const ENTRY_SENS_LOTTIE = 2800;   // higher = slower entry (was 2000)
+const RAMP_FLOOR = 0.4;           // starting speed as a fraction (0.15 felt choppy)
 
 const lottieBox = document.getElementById('lottie-box');
 const lotties = new Map();   // trigger → { anim, holder }
@@ -277,8 +280,14 @@ if (!isLottie && e.deltaY > 0 && progress >= HOLD_AT) {
   return;
 }
   const prev = progress;
-  const sens = isLottie ? 2000 : 2600;
-const ramp = isLottie ? 0.15 + 0.85 * ease(clamp((now - sceneStart) / ENTRY_RAMP_MS)) : 1;  
+ // entry = scrolling down toward the scene's resting point
+const isEntry = e.deltaY > 0 && progress < (isLottie ? LOTTIE_DONE : HOLD_AT);
+const sens = isEntry
+  ? (isLottie ? ENTRY_SENS_LOTTIE : ENTRY_SENS_IMG)
+  : (isLottie ? 2000 : 2600);
+const ramp = isEntry
+  ? RAMP_FLOOR + (1 - RAMP_FLOOR) * ease(clamp((now - sceneStart) / ENTRY_RAMP_MS))
+  : 1;
   progress = clamp(progress + (e.deltaY / sens) * ramp, 0, maxProgress(active));
 
   // lottie reached its last frame: start the exit right away
