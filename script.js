@@ -168,7 +168,6 @@ function renderLottie() {
 }
 
 function end(forward) {
-  function end(forward) {
   cancelAnimationFrame(autoRaf);
   autoing = false;
   if (active.dataset.type === 'lottie') {
