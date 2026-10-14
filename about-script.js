@@ -5,6 +5,8 @@ let pos = 0;   // shared scroll position in px
 const COLOPHON_IN  = 300;    // description fades out, colophon fades in
 const COLOPHON_OUT = 1100;   // colophon fades out, image columns start scrolling
 
+const IMG_DELAY = 300;   // px of scroll between colophon fading out and images starting
+
 const maxScroll = col => col.scrollHeight - col.clientHeight;
 const imageMax  = () => Math.max(...cols.map(maxScroll));
 
@@ -12,9 +14,10 @@ function updateTheme() {
   const circles = [...document.querySelectorAll('.rust-circle')];
   const visible = circles.some(c => {
     const r = c.getBoundingClientRect();
-    return r.bottom > 0 && r.top < innerHeight;   // any part of a circle is on screen
+    return r.bottom > 0 && r.top < innerHeight;
   });
-  document.body.classList.toggle('dark', visible);
+  const inGap = pos >= COLOPHON_OUT && pos < COLOPHON_OUT + IMG_DELAY;
+  document.body.classList.toggle('dark', visible || inGap);
 }
 
 const finalBox = document.getElementById('final-lottie');
@@ -50,7 +53,7 @@ function updateFinal(atEnd) {
 }
 
 function apply() {
-  const total = COLOPHON_OUT + imageMax();
+  const total = COLOPHON_OUT + IMG_DELAY + imageMax();
   pos = Math.min(total, Math.max(0, pos));        // clamp
 
   const inColophon = pos >= COLOPHON_IN && pos < COLOPHON_OUT;
@@ -65,7 +68,7 @@ function apply() {
   colophon.classList.toggle('show', inColophon);
 
   // images only start moving after the colophon stage
-  const imgPos = Math.max(0, pos - COLOPHON_OUT);
+  const imgPos = Math.max(0, pos - COLOPHON_OUT - IMG_DELAY);
   cols.forEach((col, i) => {
     const m = maxScroll(col);
     const p = Math.min(imgPos, m);
@@ -105,13 +108,26 @@ document.getElementById('about-reset').addEventListener('click', e => {
   animateTo(0, 1000);
 });
 
-window.addEventListener('wheel', e => {
-  cancelAnimationFrame(animId);   // <- add this
-  e.preventDefault();
-  const unit = e.deltaMode === 1 ? 16 : 1;        // Firefox mouse wheels report lines
-  pos += e.deltaY * unit;
+let target = 0, glideRaf = null;
+const totalScroll = () => COLOPHON_OUT + IMG_DELAY + imageMax();
+
+function glide() {
+  pos += (target - pos) * 0.15;
+  if (Math.abs(target - pos) < 0.5) pos = target;
   apply();
+  glideRaf = pos !== target ? requestAnimationFrame(glide) : null;
+}
+
+window.addEventListener('wheel', e => {
+  cancelAnimationFrame(animId);
+  e.preventDefault();
+  const unit = e.deltaMode === 1 ? 16 : 1;
+  target = Math.min(totalScroll(), Math.max(0, target + e.deltaY * unit));
+  if (!glideRaf) glideRaf = requestAnimationFrame(glide);
 }, { passive: false });
 
-window.addEventListener('load', apply);            // set the start positions
+window.addEventListener('load', () => {
+  document.querySelectorAll('.rust-circle img').forEach(img => img.decode?.().catch(() => {}));
+  apply();
+});
 window.addEventListener('resize', apply);

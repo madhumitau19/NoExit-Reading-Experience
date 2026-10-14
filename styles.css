@@ -631,5 +631,8 @@ div.trigger { display: none; }
 }
 #final-lottie.show { opacity: 1; }
 
+
+
+
 #no-exit-text, #caring-text { width: var(--text-w); }
-#no-exit { overflow-x: hidden; }   /* stops sideways scroll when it's narrower than its text */
+#no-exit { overflow-x: hidden; } 
