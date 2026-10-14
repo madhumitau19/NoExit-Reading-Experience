@@ -25,7 +25,7 @@ const L_SPEED_OUT = 0.6;         // max progress per second while fading out / c
 const L_MIN_MOVE = 0.03;         // a swipe must move this much to count (ignores jitter)
 const L_GESTURE_GAP = 140;       // ms without wheel events = swipe finished
 const L_GRACE_MS = 300;          // right after a scene starts, don't let jitter close it
-const L_ABSORB_MS = 700;         // entering from below: ignore leftover momentum for up to this long
+const L_ABSORB_MS = 1200;         // entering from below: ignore leftover momentum for up to this long
 
 // page jump (title clicks)
 const JUMP_MS = 6000;
@@ -153,10 +153,11 @@ function lottieWheel(e, now) {
   const gap = now - lLastWheel;
   lLastWheel = now;
 
-  // entering from below: swallow leftover momentum, but never for long
   if (lNeedGap) {
-    if (gap > L_GESTURE_GAP || now - sceneStart > L_ABSORB_MS) lNeedGap = false;
-    else return;
+    if (gap > L_GESTURE_GAP || now - sceneStart > L_ABSORB_MS) {
+      lNeedGap = false;
+      beginGesture();            // start from the current state, not stale values
+    } else return;
   }
 
   if (gap > L_GESTURE_GAP) beginGesture();
@@ -305,7 +306,13 @@ src.addEventListener('scroll', () => {
     const below = t.getBoundingClientRect().top > line;
     if (below === wasBelow.get(t)) return;
     wasBelow.set(t, below);
-    start(t, below ? 1 : 0);
+    const isLottie = t.dataset.type === 'lottie';
+    start(t, below ? (isLottie ? 1 : 0.75) : 0);
+
+    // entering an image from below: replay the exit in reverse (image + black fade back in together)
+    if (active && below && !isLottie) {
+      autoTo(HOLD_AT, IMG_EXIT_MS, () => { holdUntil = performance.now() + 300; });
+    }
   });
 });
 
