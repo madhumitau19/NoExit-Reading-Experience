@@ -66,7 +66,7 @@ const easeInOutPow = (x, p = 12) =>
 const maxProgress = t => t.dataset.type === 'lottie' ? 0.9 : 1;
 
 const LOTTIE_DONE = 0.6;   // progress where the animation has finished playing
-const EXIT_MS = 700;       // fade + collapse duration once triggered
+const EXIT_MS = 1200;       // fade + collapse duration once triggered
 
 let autoRaf = null;
 let autoing = false;

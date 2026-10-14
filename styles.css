@@ -612,3 +612,7 @@ h1{
 #no-exit-title:hover, #caring-title:hover, #close-btn:hover {
     filter: blur(1px);
 }
+
+.no-exit-img:hover, .caring-img:hover{
+    cursor: pointer;
+}
