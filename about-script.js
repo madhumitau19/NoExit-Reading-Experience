@@ -44,24 +44,6 @@ function apply() {
   updateTheme();
 }
 
-function apply() {
-  const max = Math.max(...cols.map(maxScroll));
-  pos = Math.min(max, Math.max(0, pos));          // clamp
-
-  const atEnd = pos >= max - 1;   // -1 tolerates sub-pixel rounding
-  const atMiddle = pos >= max * 0.5;
-document.getElementById('description-container').classList.toggle('hide', atMiddle);
-document.getElementById('colophon-container').classList.toggle('show', atEnd);
-
-  cols.forEach((col, i) => {
-    const m = maxScroll(col);
-    const p = Math.min(pos, m);
-    // index 0, 2, 4 (columns 1, 3, 5) scroll down; 1, 3 (columns 2, 4) scroll up
-    col.scrollTop = i % 2 === 0 ? p : m - p;
-  });
-
-  updateTheme();
-}
 
 let animId = null;
 

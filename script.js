@@ -68,11 +68,11 @@ const easeInOutPow = (x, p = 12) =>
     ? Math.pow(2, p - 1) * Math.pow(x, p)
     : 1 - Math.pow(-2 * x + 2, p) / 2;
 
-const maxProgress = t => t.dataset.type === 'lottie' ? 0.9 : 1;
+const maxProgress = t => t.dataset.type === 'lottie' ? 1 : 1;
 
 const LOTTIE_DONE = 0.6;   // progress where the animation has finished playing
 const EXIT_MS = 1200;       // fade + collapse duration once triggered
-const LOTTIE_EXIT_MS = 1800;   // lottie exit only (EXIT_MS stays for entering from below)
+const LOTTIE_EXIT_MS = 2200;  // lottie exit only (EXIT_MS stays for entering from below)
 const IMG_EXIT_MS = 700;   // image + background fade out together
 
 let autoRaf = null;
@@ -208,12 +208,13 @@ function renderLottie() {
   const { anim } = lotties.get(active);
   const lastFrame = Number(active.dataset.end) || (anim.totalFrames - 1);
 
-  const col = ease(seg(0, 0.1)) * (1 - easeInOutPow(seg(0.64, 0.9), 3));
-center.style.flex = `0 0 ${col * 20}%`;
-center.style.marginLeft = `${-(1 - col) * 20}px`;
+  // fade first (0.6 → 0.75), then the column collapses (0.75 → 1) with the quote already gone
+  const col = ease(seg(0, 0.1)) * (1 - easeInOutPow(seg(0.75, 1), 3));
+  center.style.flex = `0 0 ${col * 20}%`;
+  center.style.marginLeft = `${-(1 - col) * 20}px`;
 
-anim.goToAndStop(seg(0.1, 0.6) * lastFrame, true);
-lottieBox.style.opacity = ease(seg(0.05, 0.15)) * (1 - ease(seg(0.6, 0.8)));
+  anim.goToAndStop(seg(0.1, 0.6) * lastFrame, true);
+  lottieBox.style.opacity = ease(seg(0.05, 0.15)) * (1 - ease(seg(0.6, 0.75)));
 }
 
 function end(forward) {
