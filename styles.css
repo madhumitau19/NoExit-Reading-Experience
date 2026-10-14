@@ -619,7 +619,7 @@ h1{
     cursor: pointer;
 }
 
-.trigger { display: none; }
+div.trigger { display: none; }
 
 #final-lottie {
     position: fixed;
