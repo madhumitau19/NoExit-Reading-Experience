@@ -41,16 +41,11 @@ function updateFinal(atEnd) {
     finalAnim.setDirection(1);
     finalAnim.goToAndPlay(0, true);
   } else {
-    // leaving the end: play backward from wherever it is, then fade out
+    // leaving the end: start fading out immediately AND play in reverse underneath
+    finalBox.classList.remove('show');
+    const from = Math.min(finalAnim.currentFrame, finalAnim.totalFrames - 1);
     finalAnim.setDirection(-1);
-    finalAnim.play();
-
-    // time remaining = how far along it is, in seconds (1000 = ms conversion)
-    const fps = finalAnim.frameRate || 30;
-    const remaining = (finalAnim.currentFrame / fps) * 1000;
-    finalTimer = setTimeout(() => {
-      if (!finalShown) finalBox.classList.remove('show');
-    }, remaining + 100);
+    finalAnim.goToAndPlay(from, true);   // explicit frame so it restarts from the paused end state
   }
 }
 
