@@ -78,7 +78,7 @@ const IMG_EXIT_MS = 700;   // image + background fade out together
 let autoRaf = null;
 let autoing = false;
 
-function autoTo(target, ms, done) {
+function autoTo(target, ms, done, easing = ease) {
   cancelAnimationFrame(autoRaf);
   const from = progress;
   const t0 = performance.now();
@@ -86,7 +86,7 @@ function autoTo(target, ms, done) {
 
   function step(now) {
     const k = clamp((now - t0) / ms);
-    progress = from + (target - from) * ease(k);
+    progress = from + (target - from) * easing(k);
     render();
     if (k < 1) {
       autoRaf = requestAnimationFrame(step);
@@ -98,17 +98,16 @@ function autoTo(target, ms, done) {
   autoRaf = requestAnimationFrame(step);
 }
 
-const LINGER_MS = 0;   // pause on the finished quote before it fades; 0 = immediate
+const LINGER_MS = 300;   // pause on the finished quote before it fades; 0 = immediate
 
 function exitLottie() {
-  
+  if (!active) return;
   const t = active;
   autoing = true;      // swallows further wheel events
   setTimeout(() => {
-    if (active !== t) return;   // scene was ended meanwhile (e.g. title jump)
-    autoTo(maxProgress(t), EXIT_MS, () => end(true));
+    if (active !== t) return;   // scene ended meanwhile (e.g. title jump)
+    autoTo(1, LOTTIE_EXIT_MS, () => end(true));
   }, LINGER_MS);
-  autoTo(maxProgress(t), LOTTIE_EXIT_MS, () => end(true));
 }
 
 function lineY() {
@@ -277,8 +276,9 @@ window.addEventListener('wheel', e => {
   }
 
   // image fully revealed + scroll down: fade image and background out together
-if (!isLottie && e.deltaY > 0 && progress >= HOLD_AT) {
-  autoTo(0.75, IMG_EXIT_MS, () => end(true));
+// lottie entry: one scroll down starts a slow, smooth, timed play
+if (isLottie && e.deltaY > 0 && progress < LOTTIE_DONE) {
+  autoTo(LOTTIE_DONE, LOTTIE_ENTRY_MS, exitLottie, x => easeInOutPow(x, 2));
   return;
 }
   const prev = progress;
@@ -326,6 +326,7 @@ document.addEventListener("click", (e) => {
 let jumping = false;
 let jumpRaf = null;
 const JUMP_MS = 6000;   // total travel time, lower = faster
+const LOTTIE_ENTRY_MS = 3500;   // higher = slower, smoother entry
 
 function jumpTo(toEnd) {
   if (active) end(toEnd);          // clean up any running scene first
