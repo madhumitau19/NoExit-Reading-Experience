@@ -14,12 +14,18 @@ const ENTRY_RAMP_MS = 800;
 const ENTRY_SENS_IMG = 3400;     // higher = slower entry
 const RAMP_FLOOR = 0.4;
 
-// lotties (scroll-driven, smoothed)
-const LOTTIE_TRAVEL_PX = 1400;   // total wheel travel for the whole lottie (lower = fewer swipes)
-const LOTTIE_SMOOTH_MS = 180;    // glide time constant (higher = softer, lower = more responsive)
-const LOTTIE_GRACE_MS = 300;     // after a scene starts, ignore "scrolled back to 0" so jitter can't close it
-const LOTTIE_DONE = 0.65;        // animation has finished playing
-const LOTTIE_FADE_END = 0.82;    // quote fully faded; columns collapse from here to 1
+// lotties: scroll-driven, speed-capped, one swipe = one step
+const LOTTIE_DONE = 0.65;        // animation finished playing (step 1)
+const LOTTIE_FADE_END = 0.82;    // quote fully faded; columns return from here to 1
+const L_RESTS = [0, LOTTIE_DONE, 1];
+const L_TRAVEL_PX = 800;         // wheel travel for the full range (lower = more sensitive)
+const L_TAU_MS = 220;            // glide softness (higher = softer)
+const L_SPEED_IN = 0.4;          // max progress per second while the animation plays
+const L_SPEED_OUT = 0.6;         // max progress per second while fading out / collapsing
+const L_MIN_MOVE = 0.03;         // a swipe must move this much to count (ignores jitter)
+const L_GESTURE_GAP = 140;       // ms without wheel events = swipe finished
+const L_GRACE_MS = 300;          // right after a scene starts, don't let jitter close it
+const L_ABSORB_MS = 700;         // entering from below: ignore leftover momentum for up to this long
 
 // page jump (title clicks)
 const JUMP_MS = 6000;
@@ -29,14 +35,17 @@ let active = null, progress = 0;
 let holdUntil = 0;
 let sceneStart = 0;
 let autoRaf = null, autoing = false;
-let runId = 0;
-let lTarget = 0, lRaf = null, lLast = 0;
 let jumping = false, jumpRaf = null;
+
+// lottie state
+let lTarget = 0, lRaf = null, lLast = 0;
+let lLastWheel = 0, lGestureTimer = null;
+let lGestureStart = 0, lGestureSum = 0, lGestureLo = 0, lGestureHi = 1;
+let lLeaving = false, lNeedGap = false;
 
 // ---------- helpers ----------
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const ease = x => x * x * (3 - 2 * x);
-const linear = x => x;
 const easeInOutPow = (x, p = 12) =>
   x < 0.5
     ? Math.pow(2, p - 1) * Math.pow(x, p)
@@ -47,7 +56,7 @@ function lineY() {
   return src.getBoundingClientRect().top + src.clientHeight * 0.3;
 }
 
-// ---------- lotties ----------
+// ---------- load lotties ----------
 const lotties = new Map();   // trigger → { anim, holder }
 
 if (typeof lottie !== 'undefined') {
@@ -69,7 +78,7 @@ if (typeof lottie !== 'undefined') {
 // true = the marker is still below the trigger line (not reached yet)
 const wasBelow = new Map(triggers.map(t => [t, true]));
 
-// ---------- timed animation ----------
+// ---------- timed animation (images) ----------
 function autoTo(target, ms, done, easing = ease) {
   cancelAnimationFrame(autoRaf);
   const from = progress;
@@ -90,21 +99,23 @@ function autoTo(target, ms, done, easing = ease) {
   autoRaf = requestAnimationFrame(step);
 }
 
-// Runs a list of stages in order. If the scene is already partway through
-// (e.g. entered from below), finished stages are skipped and the current
-// one is shortened in proportion.
+// ---------- lottie motion ----------
+// progress glides toward lTarget, with a speed cap so it is never sudden
 function lottieGlide(now) {
   lRaf = null;
   if (!active || active.dataset.type !== 'lottie') return;
 
   const dt = Math.min(50, now - lLast);
   lLast = now;
-  progress += (lTarget - progress) * (1 - Math.exp(-dt / LOTTIE_SMOOTH_MS));
-  if (Math.abs(lTarget - progress) < 0.0005) progress = lTarget;
+
+  let step = (lTarget - progress) * (1 - Math.exp(-dt / L_TAU_MS));
+  const cap = (progress < LOTTIE_DONE ? L_SPEED_IN : L_SPEED_OUT) * dt / 1000;
+  progress += clamp(step, -cap, cap);
+  if (Math.abs(lTarget - progress) < 0.0008) progress = lTarget;
   render();
 
-  if (progress >= 1) { end(true); return; }
-  if (progress <= 0 && lTarget <= 0 && now - sceneStart > LOTTIE_GRACE_MS) { end(false); return; }
+  if (progress >= 1 && lTarget >= 1) { end(true); return; }
+  if (progress <= 0 && lLeaving)     { end(false); return; }
   if (progress !== lTarget) lRaf = requestAnimationFrame(lottieGlide);
 }
 
@@ -114,21 +125,81 @@ function nudgeLottie() {
   lRaf = requestAnimationFrame(lottieGlide);
 }
 
+// a swipe can only travel to the neighbouring step(s) of where it began
+function beginGesture() {
+  const t = lTarget, eps = 0.001;
+  lGestureStart = t;
+  lGestureSum = 0;
+  lGestureLo = Math.max(0, ...L_RESTS.filter(r => r < t - eps));
+  lGestureHi = Math.min(1, ...L_RESTS.filter(r => r > t + eps));
+}
+
+// swipe finished: glide to the step it was heading for
+function endGesture() {
+  if (!active || active.dataset.type !== 'lottie') return;
+
+  const moved = lTarget - lGestureStart;
+  if (moved > L_MIN_MOVE)       lTarget = lGestureHi;
+  else if (moved < -L_MIN_MOVE) lTarget = lGestureLo;
+  else                          lTarget = lGestureStart;
+
+  const wentBack = moved < -L_MIN_MOVE || (lGestureStart <= 0 && lGestureSum < -L_MIN_MOVE);
+  if (wentBack && lTarget <= 0 && performance.now() - sceneStart > L_GRACE_MS) lLeaving = true;
+
+  nudgeLottie();
+}
+
+function lottieWheel(e, now) {
+  const gap = now - lLastWheel;
+  lLastWheel = now;
+
+  // entering from below: swallow leftover momentum, but never for long
+  if (lNeedGap) {
+    if (gap > L_GESTURE_GAP || now - sceneStart > L_ABSORB_MS) lNeedGap = false;
+    else return;
+  }
+
+  if (gap > L_GESTURE_GAP) beginGesture();
+
+  const unit = e.deltaMode === 1 ? 16 : 1;
+  const d = (e.deltaY * unit) / L_TRAVEL_PX;
+  lGestureSum += d;
+  lTarget = clamp(lTarget + d, lGestureLo, lGestureHi);
+  nudgeLottie();
+
+  clearTimeout(lGestureTimer);
+  lGestureTimer = setTimeout(endGesture, L_GESTURE_GAP);
+}
+
 // ---------- scene lifecycle ----------
 function start(t, from) {
   const entry = lotties.get(t);
-  if (t.dataset.type === 'lottie' && !entry) return;   // lottie failed to load
+  const isLottie = t.dataset.type === 'lottie';
+  if (isLottie && !entry) return;   // lottie failed to load
 
   sceneStart = performance.now();
   active = t;
   progress = from;
-  lTarget = from;
   src.scrollTop += t.getBoundingClientRect().top - lineY();
   src.style.overflow = 'hidden';
   center.classList.add('active');
 
-  if (t.dataset.type === 'lottie') {
+  if (isLottie) {
     entry.holder.style.display = 'block';
+    lLeaving = false;
+    lLastWheel = sceneStart;
+    clearTimeout(lGestureTimer);
+    if (from >= 1) {
+      // entering from below: reopen the columns and fade the finished quote back in
+      lTarget = LOTTIE_DONE;
+      lNeedGap = true;
+      render();
+      nudgeLottie();
+      return;
+    }
+    lTarget = 0;
+    lNeedGap = false;
+    beginGesture();
   } else {
     img.src = t.dataset.src;
   }
@@ -137,11 +208,13 @@ function start(t, from) {
 
 function end(forward) {
   if (!active) return;
-  runId++;                                  // cancels any running stage sequence
   cancelAnimationFrame(autoRaf);
   cancelAnimationFrame(lRaf);
+  clearTimeout(lGestureTimer);
   lRaf = null;
   autoing = false;
+  lLeaving = false;
+  lNeedGap = false;
 
   if (active.dataset.type === 'lottie') {
     lotties.get(active).holder.style.display = 'none';
@@ -213,13 +286,13 @@ function renderLottie() {
   const { anim } = lotties.get(active);
   const lastFrame = Number(active.dataset.end) || (anim.totalFrames - 1);
 
-  // 0 → 0.1 column opens | 0.1 → DONE animation plays | DONE → FADE_END quote fades | FADE_END → 1 columns return
-  const col = ease(seg(0, 0.1)) * (1 - ease(seg(LOTTIE_FADE_END, 1)));
+  // 0 → 0.15 columns open | 0.15 → DONE animation plays | DONE → FADE_END quote fades | FADE_END → 1 columns return
+  const col = ease(seg(0, 0.15)) * (1 - ease(seg(LOTTIE_FADE_END, 1)));
   center.style.flex = `0 0 ${col * 20}%`;
   center.style.marginLeft = `${-(1 - col) * 20}px`;
 
-  anim.goToAndStop(seg(0.1, LOTTIE_DONE) * lastFrame, true);
-  lottieBox.style.opacity = ease(seg(0.05, 0.15)) * (1 - ease(seg(LOTTIE_DONE, LOTTIE_FADE_END)));
+  anim.goToAndStop(seg(0.15, LOTTIE_DONE) * lastFrame, true);
+  lottieBox.style.opacity = ease(seg(0.1, 0.2)) * (1 - ease(seg(LOTTIE_DONE, LOTTIE_FADE_END)));
 }
 
 // ---------- input ----------
@@ -249,17 +322,12 @@ window.addEventListener('wheel', e => {
     return;
   }
 
-  if (autoing || now < holdUntil) return;
-
-  const isLottie = active.dataset.type === 'lottie';
-
-  if (isLottie) {
-    const unit = e.deltaMode === 1 ? 16 : 1;
-    const d = clamp(e.deltaY * unit, -120, 120);        // one hard flick can't jump the scene
-    lTarget = clamp(lTarget + d / LOTTIE_TRAVEL_PX, 0, 1);
-    nudgeLottie();
+  if (active.dataset.type === 'lottie') {
+    lottieWheel(e, now);
     return;
   }
+
+  if (autoing || now < holdUntil) return;
 
   // ----- images -----
   // fully revealed + scroll down: fade image and background out together
