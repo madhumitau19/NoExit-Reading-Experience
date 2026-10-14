@@ -29,7 +29,7 @@ let active = null, progress = 0;
 
 const HOLD_AT = 0.55;   // image fully revealed
 const HOLD_MS = 2000;   // how long to linger
-let holdUntil = 0;
+let holdUntil = 0; 
 
 const lottieBox = document.getElementById('lottie-box');
 const lotties = new Map();   // trigger → { anim, holder }
@@ -66,7 +66,7 @@ const easeInOutPow = (x, p = 12) =>
 const maxProgress = t => t.dataset.type === 'lottie' ? 0.9 : 1;
 
 const LOTTIE_DONE = 0.6;   // progress where the animation has finished playing
-const EXIT_MS = 700;       // fade + collapse duration once triggered
+const EXIT_MS = 200;       // fade + collapse duration once triggered
 
 let autoRaf = null;
 let autoing = false;
@@ -89,6 +89,17 @@ function autoTo(target, ms, done) {
     }
   }
   autoRaf = requestAnimationFrame(step);
+}
+
+const LINGER_MS = 0;   // pause on the finished quote before it fades; 0 = immediate
+
+function exitLottie() {
+  const t = active;
+  autoing = true;      // swallows further wheel events
+  setTimeout(() => {
+    if (active !== t) return;   // scene was ended meanwhile (e.g. title jump)
+    autoTo(maxProgress(t), EXIT_MS, () => end(true));
+  }, LINGER_MS);
 }
 
 function lineY() {
@@ -201,6 +212,7 @@ src.addEventListener('scroll', () => {
 window.addEventListener('wheel', e => {
   if (e.target.closest('#caring-index')) return;
   e.preventDefault();
+
   if (jumping) return;
 
   if (!active) {
@@ -209,24 +221,27 @@ window.addEventListener('wheel', e => {
     return;
   }
 
-  if (autoing) return;                          // exit/entry animation running
-  if (performance.now() < holdUntil) return;    // lingering / swallowing inertia
+  if (autoing) return;
+  if (performance.now() < holdUntil) return;   // image hold (unchanged)
 
   const isLottie = active.dataset.type === 'lottie';
 
-  // lottie finished + scroll down: run the exit on its own
+  // already at the finished frame (e.g. entered from below) + scroll down: exit
   if (isLottie && e.deltaY > 0 && progress >= LOTTIE_DONE) {
-    autoTo(maxProgress(active), EXIT_MS, () => end(true));
+    exitLottie();
     return;
   }
 
   const prev = progress;
-  progress = clamp(progress + e.deltaY / 2600, 0, maxProgress(active));
+  const sens = isLottie ? 1600 : 2600;   // lotties need less wheel travel
+  progress = clamp(progress + e.deltaY / sens, 0, maxProgress(active));
 
-  // lottie just finished playing: stop there and briefly ignore trackpad inertia
+  // lottie reached its last frame: start the exit right away
   if (isLottie && prev < LOTTIE_DONE && progress >= LOTTIE_DONE) {
     progress = LOTTIE_DONE;
-    holdUntil = performance.now() + 400;
+    render();
+    exitLottie();
+    return;
   }
 
   // image hold (unchanged)
