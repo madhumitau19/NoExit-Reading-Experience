@@ -97,13 +97,12 @@ function animateTo(target, duration = 2000) {
 
 document.getElementById('colophon-btn').addEventListener('click', e => {
   e.preventDefault();
-  // land in the middle of the colophon stage
-  animateTo((COLOPHON_IN + COLOPHON_OUT) / 2);
+  animateTo((COLOPHON_IN + COLOPHON_OUT) / 2, 900);
 });
 
 document.getElementById('about-reset').addEventListener('click', e => {
-  e.preventDefault();      // stop the link reloading the page
-  animateTo(0);            // scroll back to the start
+  e.preventDefault();
+  animateTo(0, 1000);
 });
 
 window.addEventListener('wheel', e => {

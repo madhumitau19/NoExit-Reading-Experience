@@ -451,7 +451,7 @@ h1{
     position: fixed;
     top: 0px;
     left: 0px;
-    transition: opacity 0.7s ease-in-out;
+    transition: opacity 0.5s ease-in-out;
 }
 #description{
     width: 350px;
@@ -523,7 +523,7 @@ h1{
 }
 #colophon-container.show{
     opacity: 1;
-    transition: opacity 0.5s ease-in-out 0.5s;
+    transition: opacity 0.5s ease-in-out 0.15s;
 }
 #description-container.hide{
     display: none;
