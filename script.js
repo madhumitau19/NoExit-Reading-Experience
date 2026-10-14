@@ -169,7 +169,7 @@ function renderLottie() {
   const lastFrame = Number(active.dataset.end) || (anim.totalFrames - 1);
 
   // column grows at the start, collapses while the quote is fading
-  const col = ease(seg(0, 0.1)) * (1 - easeInOutPow(seg(0.62, 0.9), 3));
+  const col = ease(seg(0, 0.1)) * (1 - easeInOutPow(seg(0.62, 0.9), 4));
   center.style.flex = `0 0 ${col * 20}%`;
   center.style.marginLeft = `${-(1 - col) * 20}px`;
 
