@@ -631,8 +631,32 @@ div.trigger { display: none; }
 }
 #final-lottie.show { opacity: 1; }
 
-
-
-
 #no-exit-text, #caring-text { width: var(--text-w); }
 #no-exit { overflow-x: hidden; } 
+
+.tracker{
+    background-color: black;
+    
+    height: 1px;
+    position: fixed;
+    bottom: 20px;
+}
+#tracker-no-exit{
+    left: 21.75dvw;
+    width: 26dvw;
+}
+#tracker-caring{
+    right: 21.5dvw;
+    width: 26.5dvw;
+}
+.tracker-mark{
+    position: absolute;
+    top: -300%;
+    width: 7px;
+    height: 7px;
+    border-radius: 100%;
+    background-color: black;
+}
+#tracker-mark-right{
+    right: 0px;
+}

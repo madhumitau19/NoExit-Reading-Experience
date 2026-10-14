@@ -5,6 +5,8 @@ const img = document.getElementById('rust1');
 const lottieBox = document.getElementById('lottie-box');
 const triggers = [...document.querySelectorAll('.trigger')];
 
+
+
 // ---------- settings ----------
 // images
 const HOLD_AT = 0.55;            // image fully revealed
@@ -61,6 +63,22 @@ function lockTextWidth() {
   document.documentElement.style.setProperty('--text-w', src.clientWidth + 'px');
 }
 lockTextWidth();
+// ---------- trackers ----------
+const markL = document.getElementById('tracker-mark-left');
+const markR = document.getElementById('tracker-mark-right');
+const MARK_SIZE = 7;   // keep in sync with .tracker-mark width
+
+function updateTrackers() {
+  const max = src.scrollHeight - src.clientHeight;
+  const p = max > 0 ? clamp(src.scrollTop / max) : 0;
+  const offset = `calc(${p * 100}% - ${p * MARK_SIZE}px)`;
+  markL.style.left = offset;    // moves left → right
+  markR.style.right = offset;   // moves right → left
+}
+
+src.addEventListener('scroll', updateTrackers);
+addEventListener('resize', updateTrackers);
+updateTrackers();
 addEventListener('resize', lockTextWidth);
 
 
