@@ -30,6 +30,8 @@ let active = null, progress = 0;
 const HOLD_AT = 0.55;   // image fully revealed
 const HOLD_MS = 2000;   // how long to linger
 let holdUntil = 0; 
+let sceneStart = 0;
+const ENTRY_RAMP_MS = 800;   // longer = gentler entry
 
 const lottieBox = document.getElementById('lottie-box');
 const lotties = new Map();   // trigger → { anim, holder }
@@ -67,6 +69,7 @@ const maxProgress = t => t.dataset.type === 'lottie' ? 0.9 : 1;
 
 const LOTTIE_DONE = 0.6;   // progress where the animation has finished playing
 const EXIT_MS = 1200;       // fade + collapse duration once triggered
+const IMG_EXIT_MS = 700;   // image + background fade out together
 
 let autoRaf = null;
 let autoing = false;
@@ -107,6 +110,7 @@ function lineY() {
 }
 
 function start(t, from) {
+  sceneStart = performance.now();
   active = t;
   progress = from;
   src.scrollTop += t.getBoundingClientRect().top - lineY();
@@ -128,6 +132,22 @@ function start(t, from) {
 }
 
 const seg = (a, b) => clamp((progress - a) / (b - a));   // 0→1 between a and b
+// function setInvert(v) {
+//   const b = document.body;
+//   if (v <= 0.001) {
+//     b.classList.remove('scene', 'inverted');
+//     b.style.removeProperty('background-color');
+//     b.style.removeProperty('color');
+//     b.style.removeProperty('--inv');
+//     return;
+//   }
+//   const c = Math.round(255 * (1 - v));
+//   b.classList.add('scene');
+//   b.style.backgroundColor = `rgb(${c},${c},${c})`;
+//   b.style.color = `rgb(${255 - c},${255 - c},${255 - c})`;
+//   b.style.setProperty('--inv', v);
+//   b.classList.toggle('inverted', v > 0.5);   // only used to block pointer events
+// }
 
 function render() {
   if (active.dataset.type === 'lottie') {
@@ -161,7 +181,21 @@ function render() {
 //   img.style.transform = `scale(${0.3 + 0.7 * grow})`;   // grows to full column height
   img.style.opacity   = grow * (1 - fadeOut);
 
-  document.body.classList.toggle('inverted', progress >= 0.27 && progress <= 0.55);
+  const b = document.body;
+if (progress > HOLD_AT) {
+  // exit: background follows the exact same value as the image fade
+  const c = Math.round(255 * fadeOut);
+  b.style.transition = 'none';
+  b.style.backgroundColor = `rgb(${c},${c},${c})`;
+  b.style.color = `rgb(${255 - c},${255 - c},${255 - c})`;
+  b.classList.toggle('inverted', fadeOut < 0.5);   // columns start returning halfway
+} else {
+  // entry: unchanged, timed CSS transition
+  b.style.transition = '';
+  b.style.removeProperty('background-color');
+  b.style.removeProperty('color');
+  b.classList.toggle('inverted', progress >= 0.27 && progress <= 0.55);
+}
 }
 
 function renderLottie() {
@@ -192,7 +226,11 @@ function end(forward) {
   src.style.overflow = '';                 // unlock scrolling
   wasBelow.set(active, !forward);
   active = null;
-  document.body.classList.remove('inverted');
+  const b = document.body;
+  b.style.transition = '';
+  b.style.removeProperty('background-color');
+  b.style.removeProperty('color');
+  b.classList.remove('inverted');
 }
 
 // detect crossing the marker in either direction
@@ -210,6 +248,7 @@ src.addEventListener('scroll', () => {
 
 // the wheel drives the scene both ways
 window.addEventListener('wheel', e => {
+  const now = performance.now();
   if (e.target.closest('#caring-index')) return;
   e.preventDefault();
 
@@ -232,9 +271,15 @@ window.addEventListener('wheel', e => {
     return;
   }
 
+  // image fully revealed + scroll down: fade image and background out together
+if (!isLottie && e.deltaY > 0 && progress >= HOLD_AT) {
+  autoTo(0.75, IMG_EXIT_MS, () => end(true));
+  return;
+}
   const prev = progress;
-  const sens = isLottie ? 1600 : 2600;   // lotties need less wheel travel
-  progress = clamp(progress + e.deltaY / sens, 0, maxProgress(active));
+  const sens = isLottie ? 2000 : 2600;
+const ramp = isLottie ? 0.15 + 0.85 * ease(clamp((now - sceneStart) / ENTRY_RAMP_MS)) : 1;  
+  progress = clamp(progress + (e.deltaY / sens) * ramp, 0, maxProgress(active));
 
   // lottie reached its last frame: start the exit right away
   if (isLottie && prev < LOTTIE_DONE && progress >= LOTTIE_DONE) {

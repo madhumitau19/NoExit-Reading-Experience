@@ -1,7 +1,12 @@
 const cols = [...document.querySelectorAll('.image-column')];
 let pos = 0;   // shared scroll position in px
 
+// stage boundaries (px of scroll)
+const COLOPHON_IN  = 300;    // description fades out, colophon fades in
+const COLOPHON_OUT = 1100;   // colophon fades out, image columns start scrolling
+
 const maxScroll = col => col.scrollHeight - col.clientHeight;
+const imageMax  = () => Math.max(...cols.map(maxScroll));
 
 function updateTheme() {
   const circles = [...document.querySelectorAll('.rust-circle')];
@@ -10,8 +15,33 @@ function updateTheme() {
     return r.bottom > 0 && r.top < innerHeight;   // any part of a circle is on screen
   });
   document.body.classList.toggle('dark', visible);
-  document.getElementById("description-container").classList.toggle('gone', visible);
-  document.getElementById("colophon-container").classList.add('pre-show', visible);
+}
+
+function apply() {
+  const total = COLOPHON_OUT + imageMax();
+  pos = Math.min(total, Math.max(0, pos));        // clamp
+
+  const inColophon = pos >= COLOPHON_IN && pos < COLOPHON_OUT;
+
+  // description: fades once we pass COLOPHON_IN, fully hidden once the colophon is done
+  document.getElementById('description-container').classList.toggle('gone', pos >= COLOPHON_IN);
+  document.getElementById('description-container').classList.toggle('hide', pos >= COLOPHON_OUT);
+
+  // colophon: only visible in its own stage
+  const colophon = document.getElementById('colophon-container');
+  colophon.classList.add('pre-show');
+  colophon.classList.toggle('show', inColophon);
+
+  // images only start moving after the colophon stage
+  const imgPos = Math.max(0, pos - COLOPHON_OUT);
+  cols.forEach((col, i) => {
+    const m = maxScroll(col);
+    const p = Math.min(imgPos, m);
+    // index 0, 2, 4 scroll down; 1, 3 scroll up
+    col.scrollTop = i % 2 === 0 ? p : m - p;
+  });
+
+  updateTheme();
 }
 
 function apply() {
@@ -52,8 +82,9 @@ function animateTo(target, duration = 2000) {
 }
 
 document.getElementById('colophon-btn').addEventListener('click', e => {
-  e.preventDefault();                                   // stop the link reloading the page
-  animateTo(Math.max(...cols.map(maxScroll)));          // scroll to the very end
+  e.preventDefault();
+  // land in the middle of the colophon stage
+  animateTo((COLOPHON_IN + COLOPHON_OUT) / 2);
 });
 
 document.getElementById('about-reset').addEventListener('click', e => {

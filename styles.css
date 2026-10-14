@@ -350,11 +350,12 @@ h1{
 }
 #center.active { display: block; }
 #rust1 {
-    position: fixed;           /* leaves the column but is sized from its rectangle */
+    position: fixed;
     z-index: 100;
-    object-fit: cover;         /* use "contain" to avoid cropping */
+    object-fit: cover;
     opacity: 0;
     pointer-events: none;
+    will-change: clip-path, opacity;
 }
 
 
