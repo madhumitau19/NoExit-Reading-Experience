@@ -292,7 +292,10 @@ function renderLottie() {
   center.style.flex = `0 0 ${col * 20}%`;
   center.style.marginLeft = `${-(1 - col) * 20}px`;
 
-  anim.goToAndStop(seg(0.15, LOTTIE_DONE) * lastFrame, true);
+  const GENTLE = 1;                          // 0 = linear (as now), 1 = full ease in/out
+  const k = seg(0.15, LOTTIE_DONE);
+  const eased = k + (ease(k) - k) * GENTLE;
+  anim.goToAndStop(eased * lastFrame, true);
   lottieBox.style.opacity = ease(seg(0.1, 0.2)) * (1 - ease(seg(LOTTIE_DONE, LOTTIE_FADE_END)));
 }
 
