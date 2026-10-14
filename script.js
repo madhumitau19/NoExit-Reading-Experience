@@ -66,7 +66,7 @@ const easeInOutPow = (x, p = 12) =>
 const maxProgress = t => t.dataset.type === 'lottie' ? 0.9 : 1;
 
 const LOTTIE_DONE = 0.6;   // progress where the animation has finished playing
-const EXIT_MS = 200;       // fade + collapse duration once triggered
+const EXIT_MS = 700;       // fade + collapse duration once triggered
 
 let autoRaf = null;
 let autoing = false;
@@ -169,13 +169,13 @@ function renderLottie() {
   const lastFrame = Number(active.dataset.end) || (anim.totalFrames - 1);
 
   // column grows at the start, collapses while the quote is fading
-  const col = ease(seg(0, 0.1)) * (1 - ease(seg(0.7, 0.9)));
+  const col = ease(seg(0, 0.1)) * (1 - easeInOutPow(seg(0.62, 0.9), 3));
   center.style.flex = `0 0 ${col * 20}%`;
   center.style.marginLeft = `${-(1 - col) * 20}px`;
 
   // animation plays 0.1 → 0.6, fade-out starts the instant it finishes
   anim.goToAndStop(seg(0.1, 0.6) * lastFrame, true);
-  lottieBox.style.opacity = ease(seg(0.05, 0.15)) * (1 - ease(seg(0.6, 0.75)));
+  lottieBox.style.opacity = ease(seg(0.05, 0.15)) * (1 - ease(seg(0.6, 0.68)));
 }
 
 function end(forward) {
@@ -299,3 +299,9 @@ function jumpTo(toEnd) {
 
 document.getElementById('no-exit-title').addEventListener('click', () => jumpTo(false));
 document.getElementById('caring-title').addEventListener('click', () => jumpTo(true));
+
+
+//Close button
+document.getElementById("close-btn").addEventListener("click", ()=>{
+  document.getElementById("caring-index").classList.remove("show");
+})

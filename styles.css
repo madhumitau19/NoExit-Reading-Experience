@@ -598,17 +598,17 @@ h1{
 #close-btn{
     text-transform: uppercase;
     position: fixed;
-    top: 15px;
+    top: 12px;
     left: calc(50dvw - 17px);
     text-align: center;
     font-size: 10px;
 }
 
-#no-exit-title, #caring-title {
+#no-exit-title, #caring-title, #close-btn {
     cursor: pointer;
     z-index: 600;
     transition: filter 0.3s ease-in-out;
 }
-#no-exit-title:hover, #caring-title:hover {
+#no-exit-title:hover, #caring-title:hover, #close-btn:hover {
     filter: blur(1px);
 }
