@@ -28,16 +28,29 @@ const finalAnim = (typeof lottie !== 'undefined')
     })
   : null;
 
+let finalTimer = null;
+
 function updateFinal(atEnd) {
   if (!finalAnim || atEnd === finalShown) return;
   finalShown = atEnd;
-  finalBox.classList.toggle('show', atEnd);
+  clearTimeout(finalTimer);
 
   if (atEnd) {
-    finalAnim.goToAndPlay(0, true);          // play from the start
+    // arriving at the end: fade in and play forward from the start
+    finalBox.classList.add('show');
+    finalAnim.setDirection(1);
+    finalAnim.goToAndPlay(0, true);
   } else {
-    // rewind only after the fade-out finishes, so there's no visible jump
-    setTimeout(() => { if (!finalShown) finalAnim.stop(); }, 1000);
+    // leaving the end: play backward from wherever it is, then fade out
+    finalAnim.setDirection(-1);
+    finalAnim.play();
+
+    // time remaining = how far along it is, in seconds (1000 = ms conversion)
+    const fps = finalAnim.frameRate || 30;
+    const remaining = (finalAnim.currentFrame / fps) * 1000;
+    finalTimer = setTimeout(() => {
+      if (!finalShown) finalBox.classList.remove('show');
+    }, remaining + 100);
   }
 }
 
