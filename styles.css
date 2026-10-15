@@ -672,3 +672,19 @@ div.trigger { display: none; }
 #tracker-mark-right{
     right: 0px;
 }
+
+
+.main-column {
+    min-width: 0;                 /* lets the column size to its box instead of its content */
+    overflow-x: hidden;
+    scrollbar-width: none;        /* Firefox: the hidden-scrollbar rule only covers Chrome/Safari */
+    -ms-overflow-style: none;
+}
+
+.text {
+    text-align: justify;
+    box-sizing: border-box;
+    width: 100%;
+    padding-right: 4px;           /* small buffer so justified lines never touch the edge */
+    overflow-wrap: break-word;    /* long words/strings wrap instead of running past the edge */
+}
