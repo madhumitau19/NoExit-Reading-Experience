@@ -340,6 +340,16 @@ h1{
 .main-column::-webkit-scrollbar{
   display: none;  
 }
+#caring-index::-webkit-scrollbar,
+.index-column::-webkit-scrollbar { display: none; }
+
+#caring-index,
+.index-column { scrollbar-width: none; }
+
+#caring-index { overflow-y: auto; }
+.index-column { overflow: visible; }   /* no nested scrollers */
+
+
 
 /*center*/
 #center {
@@ -379,6 +389,7 @@ h1{
     display: flex;
     gap: 10px;
     font-size: 10px;
+    align-items: flex-start
 }
 .index-column{
     overflow-y: scroll;
@@ -391,6 +402,7 @@ h1{
 }
 .fig img{
     max-width: 100%;
+    display: block; max-width: 100%;
 }
 
 #fig-display{
