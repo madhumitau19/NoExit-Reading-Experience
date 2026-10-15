@@ -688,3 +688,8 @@ div.trigger { display: none; }
     padding-right: 4px;           /* small buffer so justified lines never touch the edge */
     overflow-wrap: break-word;    /* long words/strings wrap instead of running past the edge */
 }
+
+::selection {
+  background-color: black; /* Custom highlight background */
+  color: white;            /* Custom text color when highlighted */
+}
